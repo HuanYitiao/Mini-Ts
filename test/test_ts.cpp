@@ -1,3 +1,4 @@
+#include "packetizer.hpp"
 #include "ts_packet.hpp"
 #include <gtest/gtest.h>
 
@@ -48,4 +49,51 @@ TEST(TSPacket, FromBytesInvalidSync)
     badData[0]  = 0x00;
     auto result = TSPacket::fromBytes(badData);
     EXPECT_FALSE(result.has_value());
+}
+
+TEST(Packetizer, EmptyInput)
+{
+    Packetizer packer;
+    auto       packets = packer.packetize({});
+    EXPECT_TRUE(packets.empty());
+}
+
+TEST(Packetizer, SmallInput)
+{
+    Packetizer           packer;
+    std::vector<uint8_t> data(100, 0xAB);
+
+    auto packets = packer.packetize(data);
+    EXPECT_EQ(packets.size(), 1);
+    EXPECT_EQ(packets[0].getPid(), 0x0100);
+    EXPECT_EQ(packets[0].getContinuityCounter(), 0);
+    EXPECT_TRUE(packets[0].getPayloadUnitStart());
+}
+
+TEST(Packetizer, BigInput)
+{
+    Packetizer           packer;
+    std::vector<uint8_t> data(184 * 3 + 10, 0xAB);
+
+    auto packets = packer.packetize(data);
+    EXPECT_EQ(packets.size(), 4);
+    EXPECT_EQ(packets[0].getPid(), 0x0100);
+    EXPECT_EQ(packets[1].getPid(), 0x0100);
+    EXPECT_EQ(packets[2].getPid(), 0x0100);
+    EXPECT_EQ(packets[3].getPid(), 0x0100);
+    EXPECT_TRUE(packets[0].getPayloadUnitStart());
+    EXPECT_FALSE(packets[1].getPayloadUnitStart());
+    EXPECT_FALSE(packets[2].getPayloadUnitStart());
+    EXPECT_FALSE(packets[3].getPayloadUnitStart());
+}
+
+TEST(Packetizer, BigInputCC)
+{
+    Packetizer           packer;
+    std::vector<uint8_t> data(184 * 16 + 10, 0xAB);
+
+    auto packets = packer.packetize(data);
+    EXPECT_EQ(packets.size(), 17);
+    EXPECT_EQ(packets[15].getContinuityCounter(), 15);
+    EXPECT_EQ(packets[16].getContinuityCounter(), 0);
 }
