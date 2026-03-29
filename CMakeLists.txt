@@ -19,6 +19,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+add_executable(ts-mini src/main.cpp)
+target_link_libraries(ts-mini PRIVATE tslib)
+
 enable_testing()
 add_executable(ts_tests test/test_ts.cpp)
 target_link_libraries(ts_tests PRIVATE tslib GTest::gtest_main)
