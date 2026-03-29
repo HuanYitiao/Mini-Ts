@@ -1,5 +1,7 @@
 #include "packetizer.hpp"
+#include "parser.hpp"
 #include "ts_packet.hpp"
+#include <algorithm>
 #include <gtest/gtest.h>
 
 using namespace ts;
@@ -96,4 +98,42 @@ TEST(Packetizer, BigInputCC)
     EXPECT_EQ(packets.size(), 17);
     EXPECT_EQ(packets[15].getContinuityCounter(), 15);
     EXPECT_EQ(packets[16].getContinuityCounter(), 0);
+}
+
+TEST(Parser, RoundtripSmall)
+{
+    Packetizer           packer;
+    std::vector<uint8_t> original(184 * 16 + 10, 0xAB);
+
+    auto packets = packer.packetize(original);
+
+    std::vector<uint8_t> stream;
+    for (const auto& pkt : packets)
+    {
+        stream.insert(stream.end(), pkt.raw().begin(), pkt.raw().end());
+    }
+    Parser parser;
+    auto   result = parser.parse(stream);
+    EXPECT_EQ(result.packetsParsed, packets.size());
+    EXPECT_EQ(result.continuityErrors, 0);
+    EXPECT_TRUE(std::equal(original.begin(), original.end(), result.restoredData.begin()));
+}
+
+TEST(Parser, SyncLost)
+{
+    Packetizer           packer;
+    std::vector<uint8_t> original(184 * 16 + 10, 0xAB);
+
+    auto packets = packer.packetize(original);
+
+    std::vector<uint8_t> stream;
+    for (const auto& pkt : packets)
+    {
+        stream.insert(stream.end(), pkt.raw().begin(), pkt.raw().end());
+    }
+    stream[188] = 0x00;  // back sync
+    Parser parser;
+    auto   result = parser.parse(stream);
+    EXPECT_TRUE(result.syncLosses);
+    EXPECT_GE(result.packetsParsed, packets.size() - 1);
 }

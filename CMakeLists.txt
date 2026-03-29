@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(tslib
     src/ts_packet.cpp
     src/packetizer.cpp
+    src/parser.cpp
 )
 target_include_directories(tslib PUBLIC include)
 
